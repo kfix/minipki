@@ -87,17 +87,14 @@ def which(program):
 
 
 def initca(pargs):
-    if pargs.purge:
-        for p in os.listdir("."): 
-            if os.path.isfile(p) or os.path.islink(p): 
-                os.unlink(p)
-            elif os.path.isdir(p):
-                shutil.rmtree(p)
-    else: 
-        for p in ["serial.txt", "index.txt", "private", "newcerts", 
-                  "certified-keys", CA_CNF]:
-            if (os.path.exists(p)):
-                raise Exception("Path '{}' exists, exiting...".format(p))
+    for p in ["serial.txt", "index.txt", "private", "newcerts", 
+              "certified-keys", CA_CNF]:
+        if pargs.purge and (os.path.isfile(p) or os.path.islink(p)): 
+            os.unlink(p)
+        elif pargs.purge and os.path.isdir(p):
+            shutil.rmtree(p)
+        elif (os.path.exists(p)):
+            raise Exception("Path '{}' exists, exiting...".format(p))
 
     fcnf=open(CA_CNF,'w')
     fcnf.write(build_ca_cnf(pargs))
@@ -198,15 +195,17 @@ def makecnf(pargs):
 
         subjectAltNameLines = "subjectAltName = @alt_names" + "\n\n" 
         subjectAltNameLines+= "[ alt_names ]" + "\n"
-        ip = dns = [] 
+        ip = []
+        dns = []
 
         for entry in san:
             # test if this is an IP address by asking the socket module
             try:
                 socket.inet_aton(entry)
                 ip.append(entry)
-            except socket.error:
+            except (socket.error, OSError):
                 # assume it's a hostname if it fails the socket test
+                logging.debug('adding SAN: DNS:' + entry)
                 dns.append(entry)
 
         # note that OpenSSL needs it to start with DNS.1 not DNS.0
@@ -446,6 +445,7 @@ def main(*args):
     
     h='Sign a CSR with an existing CA key'
     s_sign = subparsers.add_parser('sign', help=h, parents=[p_keyname])
+    s_sign.set_defaults(func=signcerts)
 
     h='Both generate and sign in one step'
     s_gensign = subparsers.add_parser('gensign', help=h, 
@@ -482,9 +482,11 @@ def main(*args):
         s_debug.add_argument('action', type=str, action='store')
         s_debug.set_defaults(func=dmisc)
 
-        h='THIS OPTION WILL DELETE ALL FILES IN THE CURRENT DIRECTORY. '
+        h='THIS OPTION WILL OVERWRITE ALL CA FILES IN THE CURRENT DIRECTORY. '
         h+='It is really intended just for debugging.'
         s_ca.add_argument('--purge', action='store_true', help=h)
+    else:
+        s_ca.add_argument('--purge', action='store_false', help=argparse.SUPPRESS)
 
     s_ca.set_defaults(func=catools)
 

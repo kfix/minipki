@@ -23,16 +23,9 @@ It's intended for use by people who handle the whole infrastructure themselves. 
 **Option 1: generate a new certificate authority**
 
 First do this to generate your CA: 
-
-    minipki initca \
-        --ca_commonName "New mini-CA" \ 
-        --organizationName "Your org"
-        --emailAddress "you@example.com" \
-        --countryName "US" \
-        --stateOrProvinceName "TX" \
-        --localityName "not sure what even goes here" \
-
-The `--ca_commonName` argument is required, but the rest are optional. 
+    cp config.default config.local
+    vim config.local
+    minipki ca --reinit
 
 **Option 2: use an existing CA**
 
